@@ -1,0 +1,10 @@
+include LICENSE
+include README.md
+include pyproject.toml
+include setup.py
+include *.pyx
+include *.pxd
+include *.c
+include *.h
+recursive-include tests *.py
+recursive-include .github *.yml

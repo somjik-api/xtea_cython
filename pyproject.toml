@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "cython>=0.29"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xtea_cython"
+version = "0.1.0"
+description = "XTEA encryption with multiple modes (ECB, CBC, CFB, OFB, CTR) - High-performance Cython implementation"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "xtea_cython contributors"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Cython",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["xtea", "encryption", "cryptography", "cython", "cipher"]
+
+[project.urls]
+Homepage = "https://github.com/somjik-api/xtea_cython"
+Documentation = "https://github.com/somjik-api/xtea_cython#readme"
+Repository = "https://github.com/somjik-api/xtea_cython"
+Issues = "https://github.com/somjik-api/xtea_cython/issues"
+
+[tool.setuptools]
+packages = ["xtea_cython"]
+package-dir = {"xtea_cython" = "."}
+
+[tool.cibuildwheel]
+# Skip PyPy and 32-bit builds
+skip = ["pp*", "*-win32", "*-manylinux_i686", "*-musllinux_i686"]
+build = "cp3{8,9,10,11,12,13}-*"
+
+[tool.cibuildwheel.linux]
+before-build = "yum install -y gcc || apt-get install -y gcc || true"
+
+[tool.cibuildwheel.macos]
+# Build for both Intel and Apple Silicon
+archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.windows]
+# Build for x86_64 only
+archs = ["AMD64"]

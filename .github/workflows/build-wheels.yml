@@ -1,0 +1,151 @@
+name: Build and Publish Wheels
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          # Linux: build for manylinux and musllinux
+          - os: ubuntu-latest
+            cibw_build: "cp38-manylinux_* cp39-manylinux_* cp310-manylinux_* cp311-manylinux_* cp312-manylinux_* cp313-manylinux_*"
+          # Windows: x86_64 only
+          - os: windows-latest
+            cibw_build: "cp38-win_amd64 cp39-win_amd64 cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64"
+          # macOS: both Intel and Apple Silicon
+          - os: macos-latest
+            cibw_build: "cp38-macosx_* cp39-macosx_* cp310-macosx_* cp311-macosx_* cp312-macosx_* cp313-macosx_*"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install cython wheel setuptools
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21
+        env:
+          CIBW_BUILD: ${{ matrix.cibw_build }}
+          CIBW_SKIP: "pp* *-win32 *-manylinux_i686 *-musllinux_i686"
+          # Enable architecture-specific optimizations
+          CIBW_ENVIRONMENT_LINUX: "CFLAGS='-O3 -march=x86-64 -mtune=generic' LDFLAGS='-flto'"
+          CIBW_ENVIRONMENT_MACOS: "CFLAGS='-O3 -march=x86-64 -mtune=generic' LDFLAGS='-flto'"
+          CIBW_ENVIRONMENT_WINDOWS: ""
+          # Test the wheels
+          CIBW_TEST_COMMAND: "python -c \"from xtea_cython import encrypt_cbc, decrypt_cbc, generate_key, generate_iv; key = generate_key(); iv = generate_iv(); data = b'test'; enc = encrypt_cbc(data, key, iv); dec = decrypt_cbc(enc, key, iv); assert dec == data; print('OK')\""
+          CIBW_TEST_SKIP: "cp38-macosx_arm64 cp39-macosx_arm64"
+
+      - name: Upload wheels as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          retention-days: 30
+
+  build-sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build cython setuptools
+
+      - name: Build sdist
+        run: python -m build --sdist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          retention-days: 30
+
+  publish:
+    name: Publish to PyPI
+    needs: [build-wheels, build-sdist]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/xtea_cython
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List files to publish
+        run: ls -la dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true
+
+  # Optional: Test installation from built wheels
+  test-wheels:
+    name: Test wheels on ${{ matrix.os }}
+    needs: build-wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.8", "3.11", "3.13"]
+
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse
+
+      - name: Install from wheel
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheelhouse/*.whl || pip install -e .
+
+      - name: Run tests
+        run: |
+          pip install pytest
+          pytest tests/ -v --tb=short

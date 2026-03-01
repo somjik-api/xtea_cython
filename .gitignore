@@ -1,0 +1,25 @@
+# Build artifacts
+*.so
+*.c
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environment
+.venv/
+venv/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
