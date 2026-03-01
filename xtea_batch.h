@@ -1,9 +1,9 @@
 /*
- * XTEA SIMD header
+ * XTEA batch processing header - interleaved execution for better ILP.
  */
 
-#ifndef XTEA_SIMD_H
-#define XTEA_SIMD_H
+#ifndef XTEA_BATCH_H
+#define XTEA_BATCH_H
 
 #include <stdint.h>
 
@@ -23,4 +23,4 @@ void xtea_decrypt_blocks_interleaved(
     uint32_t rounds
 );
 
-#endif /* XTEA_SIMD_H */
+#endif /* XTEA_BATCH_H */

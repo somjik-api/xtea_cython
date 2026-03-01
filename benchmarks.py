@@ -27,9 +27,9 @@ try:
         encrypt_ofb,
         pkcs7_pad,
     )
-    from xtea_cython.simd import encrypt_blocks_batch, decrypt_blocks_batch
+    from xtea_cython.batch import encrypt_blocks_batch, decrypt_blocks_batch
     XTEA_CYTHON_AVAILABLE = True
-    SIMD_AVAILABLE = True
+    BATCH_AVAILABLE = True
 except ImportError:
     XTEA_CYTHON_AVAILABLE = False
     print("Error: xtea_cython not built. Run: pip install .")
@@ -119,7 +119,7 @@ def run_benchmarks():
         print()
 
     # ============== Batch Processing (Interleaved) ==============
-    if SIMD_AVAILABLE:
+    if BATCH_AVAILABLE:
         print("Batch Processing (Interleaved/ILP)")
         print("-" * 40)
 

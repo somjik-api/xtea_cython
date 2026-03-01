@@ -1,6 +1,7 @@
 # Build artifacts
 *.so
-*.c
+core.c
+batch.c
 build/
 dist/
 *.egg-info/

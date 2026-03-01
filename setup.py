@@ -3,41 +3,16 @@ import platform
 from setuptools import setup, Extension
 from Cython.Build import cythonize
 
-# Platform-specific optimization flags
-is_x86 = platform.machine() in ("x86_64", "AMD64", "i686", "x86")
-
-if sys.platform == "darwin":
-    # macOS - use clang flags
-    extra_compile_args = [
-        "-O3",
-        "-march=native",
-        "-ffast-math",
-        "-funroll-loops",
-    ]
-    extra_link_args = []
-    # SSE2 only on x86
-    if is_x86:
-        extra_compile_args.append("-msse2")
-elif sys.platform == "win32":
+# Simple platform-specific optimization flags
+# Keep it portable - let the compiler defaults handle architecture-specific optimizations
+if sys.platform == "win32":
     # Windows - use MSVC flags
-    if is_x86:
-        extra_compile_args = ["/O2", "/GL", "/arch:SSE2"]
-    else:
-        extra_compile_args = ["/O2"]
-    extra_link_args = ["/LTCG"]
+    extra_compile_args = ["/O2"]
+    extra_link_args = []
 else:
-    # Linux and others - use GCC flags
-    extra_compile_args = [
-        "-O3",
-        "-march=native",
-        "-mtune=native",
-        "-ffast-math",
-        "-funroll-loops",
-        "-fomit-frame-pointer",
-    ]
-    extra_link_args = ["-flto"]
-    if is_x86:
-        extra_compile_args.append("-msse2")
+    # macOS and Linux - use portable GCC/Clang flags
+    extra_compile_args = ["-O3", "-ffast-math", "-funroll-loops"]
+    extra_link_args = ["-flto"] if sys.platform != "darwin" else []
 
 extensions = [
     Extension(
@@ -47,8 +22,8 @@ extensions = [
         extra_link_args=extra_link_args,
     ),
     Extension(
-        "xtea_cython.simd",
-        sources=["simd.pyx", "xtea_simd.c"],
+        "xtea_cython.batch",
+        sources=["batch.pyx", "xtea_batch.c"],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     )

@@ -2,10 +2,10 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 """
-XTEA SIMD wrapper for batch encryption operations.
+XTEA batch processing module - interleaved execution for better ILP.
 """
 
-cdef extern from "xtea_simd.h":
+cdef extern from "xtea_batch.h":
     void xtea_encrypt_blocks_interleaved(
         const unsigned char *data,
         unsigned char *out,
@@ -24,15 +24,15 @@ cdef extern from "xtea_simd.h":
 
 def encrypt_blocks_batch(bytes data not None, bytes key not None, unsigned int rounds=0):
     """
-    Encrypt multiple 8-byte blocks in parallel using interleaved processing.
+    Encrypt multiple 8-byte blocks using interleaved batch processing.
 
-    This is optimized for batch encryption (ECB mode) where all blocks
-    are independent and can be processed in parallel.
+    This uses interleaved execution for better instruction-level parallelism (ILP).
+    Processes 2 blocks at a time for improved CPU pipelining.
 
     Args:
         data: Multiple of 8 bytes (8, 16, 24, ...)
         key: 16-byte encryption key
-        rounds: Number of XTEA cycles (0 = default: 32)
+        rounds: Number of XTEA cycles (0 = default: 32, max: 256)
 
     Returns:
         Encrypted data (same length as input)
@@ -41,6 +41,7 @@ def encrypt_blocks_batch(bytes data not None, bytes key not None, unsigned int r
         size_t data_len = len(data)
         size_t key_len = len(key)
         unsigned int num_blocks
+        unsigned int effective_rounds
         bytearray result
 
     if data_len == 0:
@@ -51,6 +52,11 @@ def encrypt_blocks_batch(bytes data not None, bytes key not None, unsigned int r
 
     if key_len != 16:
         raise ValueError("Key must be exactly 16 bytes")
+
+    # Bounds check to prevent integer overflow in C code
+    effective_rounds = rounds if rounds > 0 else 32
+    if effective_rounds > 256:
+        raise ValueError("Rounds must be <= 256 to prevent overflow")
 
     num_blocks = data_len // 8
     result = bytearray(data_len)
@@ -68,12 +74,14 @@ def encrypt_blocks_batch(bytes data not None, bytes key not None, unsigned int r
 
 def decrypt_blocks_batch(bytes data not None, bytes key not None, unsigned int rounds=0):
     """
-    Decrypt multiple 8-byte blocks in parallel using interleaved processing.
+    Decrypt multiple 8-byte blocks using interleaved batch processing.
+
+    This uses interleaved execution for better instruction-level parallelism (ILP).
 
     Args:
         data: Multiple of 8 bytes (8, 16, 24, ...)
         key: 16-byte decryption key
-        rounds: Number of XTEA cycles (0 = default: 32)
+        rounds: Number of XTEA cycles (0 = default: 32, max: 256)
 
     Returns:
         Decrypted data (same length as input)
@@ -82,6 +90,7 @@ def decrypt_blocks_batch(bytes data not None, bytes key not None, unsigned int r
         size_t data_len = len(data)
         size_t key_len = len(key)
         unsigned int num_blocks
+        unsigned int effective_rounds
         bytearray result
 
     if data_len == 0:
@@ -92,6 +101,11 @@ def decrypt_blocks_batch(bytes data not None, bytes key not None, unsigned int r
 
     if key_len != 16:
         raise ValueError("Key must be exactly 16 bytes")
+
+    # Bounds check to prevent integer overflow in C code
+    effective_rounds = rounds if rounds > 0 else 32
+    if effective_rounds > 256:
+        raise ValueError("Rounds must be <= 256 to prevent overflow")
 
     num_blocks = data_len // 8
     result = bytearray(data_len)

@@ -77,13 +77,29 @@ def _validate_rounds(rounds: int) -> int:
 
 
 def xor_bytes(a: bytes, b: bytes) -> bytes:
-    """XOR two byte strings of equal length."""
+    """XOR two byte strings of equal length.
+
+    Args:
+        a: First byte string
+        b: Second byte string (must be same length as a)
+
+    Returns:
+        XOR of the two byte strings
+    """
     # Use bytearray for efficiency
     return bytes(bytearray(x ^ y for x, y in zip(a, b)))
 
 
 def pkcs7_pad(data: bytes, block_size: int = BLOCK_SIZE) -> bytes:
-    """Apply PKCS#7 padding to data."""
+    """Apply PKCS#7 padding to data.
+
+    Args:
+        data: Data to pad
+        block_size: Block size for padding (default: 8)
+
+    Returns:
+        Padded data with length multiple of block_size
+    """
     pad_len = block_size - (len(data) % block_size)
     return data + bytes([pad_len] * pad_len)
 
@@ -93,29 +109,31 @@ def pkcs7_unpad(data: bytes) -> bytes:
     Remove PKCS#7 padding from data.
 
     Uses constant-time comparison to prevent timing attacks.
-    Always processes the entire padding to maintain constant time.
+    Always processes all BLOCK_SIZE bytes to maintain constant time.
     """
     if not data:
         raise ValueError("Cannot unpad empty data")
 
     pad_len = data[-1]
 
-    # Validate padding length range
+    # Validate padding length range (this is not part of constant-time check)
     if pad_len < 1 or pad_len > BLOCK_SIZE:
         raise ValueError("Invalid padding")
 
-    # Constant-time padding validation
-    # Check all BLOCK_SIZE bytes (not just pad_len) to maintain constant time
-    # Use XOR to detect differences: 0 if equal, non-zero if different
-    # Then OR all results together and invert
+    # True constant-time padding validation without data-dependent branches
+    # Always process all BLOCK_SIZE bytes with the same operations
     mask = 0
     for i in range(BLOCK_SIZE):
-        if i < pad_len:
-            # Check if byte equals pad_len (XOR gives 0 if equal)
-            diff = data[-(i + 1)] ^ pad_len
-            mask |= diff
-        # For bytes outside padding, still do work to maintain constant time
-        # (access data to avoid timing differences, but don't affect mask)
+        byte_val = data[-(i + 1)]
+        # Create conditional mask without branching:
+        # int(i < pad_len) -> 1 if in padding, 0 otherwise
+        # -in_padding -> 0xFF if in padding, 0 otherwise
+        in_padding = int(i < pad_len)
+        byte_mask = -in_padding
+        # XOR gives 0 if equal, non-zero otherwise
+        # AND with byte_mask to only include bytes in actual padding
+        diff = (byte_val ^ pad_len) & byte_mask
+        mask |= diff
 
     if mask != 0:
         raise ValueError("Invalid padding")
@@ -414,6 +432,12 @@ def decrypt_ofb(data: bytes, key: bytes, iv: bytes, rounds: int = 0) -> bytes:
 def _increment_counter(counter: bytes) -> bytes:
     """
     Increment a counter (big-endian).
+
+    Args:
+        counter: 8-byte counter value
+
+    Returns:
+        Incremented counter
 
     Raises:
         ValueError: If counter wraps around (would cause nonce reuse)
