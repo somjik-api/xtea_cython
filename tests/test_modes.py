@@ -30,8 +30,8 @@ class TestECBMode:
         key = os.urandom(16)
         data = b"Hello, World!"
 
-        encrypted = encrypt_ecb(data, key)
-        decrypted = decrypt_ecb(encrypted, key)
+        encrypted = encrypt_ecb(data, key, auto_pad=True)
+        decrypted = decrypt_ecb(encrypted, key, auto_unpad=True)
 
         assert decrypted == data
 
@@ -39,8 +39,8 @@ class TestECBMode:
         """Should handle empty data."""
         key = os.urandom(16)
 
-        encrypted = encrypt_ecb(b"", key)
-        decrypted = decrypt_ecb(encrypted, key)
+        encrypted = encrypt_ecb(b"", key, auto_pad=True)
+        decrypted = decrypt_ecb(encrypted, key, auto_unpad=True)
 
         assert decrypted == b""
 
@@ -49,8 +49,8 @@ class TestECBMode:
         key = os.urandom(16)
         data = b"A" * 100  # 100 bytes = 13 blocks with padding
 
-        encrypted = encrypt_ecb(data, key)
-        decrypted = decrypt_ecb(encrypted, key)
+        encrypted = encrypt_ecb(data, key, auto_pad=True)
+        decrypted = decrypt_ecb(encrypted, key, auto_unpad=True)
 
         assert decrypted == data
         assert len(encrypted) % BLOCK_SIZE == 0
@@ -60,8 +60,8 @@ class TestECBMode:
         key = os.urandom(16)
         data = b"Test data"
 
-        encrypted1 = encrypt_ecb(data, key)
-        encrypted2 = encrypt_ecb(data, key)
+        encrypted1 = encrypt_ecb(data, key, auto_pad=True)
+        encrypted2 = encrypt_ecb(data, key, auto_pad=True)
 
         assert encrypted1 == encrypted2
 
@@ -75,8 +75,8 @@ class TestCBCMode:
         iv = os.urandom(8)
         data = b"Hello, World!"
 
-        encrypted = encrypt_cbc(data, key, iv)
-        decrypted = decrypt_cbc(encrypted, key, iv)
+        encrypted = encrypt_cbc(data, key, iv, auto_pad=True)
+        decrypted = decrypt_cbc(encrypted, key, iv, auto_unpad=True)
 
         assert decrypted == data
 
@@ -85,8 +85,8 @@ class TestCBCMode:
         key = os.urandom(16)
         iv = os.urandom(8)
 
-        encrypted = encrypt_cbc(b"", key, iv)
-        decrypted = decrypt_cbc(encrypted, key, iv)
+        encrypted = encrypt_cbc(b"", key, iv, auto_pad=True)
+        decrypted = decrypt_cbc(encrypted, key, iv, auto_unpad=True)
 
         assert decrypted == b""
 
@@ -96,8 +96,8 @@ class TestCBCMode:
         iv = os.urandom(8)
         data = b"A" * 100
 
-        encrypted = encrypt_cbc(data, key, iv)
-        decrypted = decrypt_cbc(encrypted, key, iv)
+        encrypted = encrypt_cbc(data, key, iv, auto_pad=True)
+        decrypted = decrypt_cbc(encrypted, key, iv, auto_unpad=True)
 
         assert decrypted == data
         assert len(encrypted) % BLOCK_SIZE == 0
@@ -109,8 +109,8 @@ class TestCBCMode:
         iv2 = os.urandom(8)
         data = b"Same data"
 
-        encrypted1 = encrypt_cbc(data, key, iv1)
-        encrypted2 = encrypt_cbc(data, key, iv2)
+        encrypted1 = encrypt_cbc(data, key, iv1, auto_pad=True)
+        encrypted2 = encrypt_cbc(data, key, iv2, auto_pad=True)
 
         assert encrypted1 != encrypted2
 
@@ -120,8 +120,8 @@ class TestCBCMode:
         iv = os.urandom(8)
         data = b"Test data"
 
-        encrypted1 = encrypt_cbc(data, key, iv)
-        encrypted2 = encrypt_cbc(data, key, iv)
+        encrypted1 = encrypt_cbc(data, key, iv, auto_pad=True)
+        encrypted2 = encrypt_cbc(data, key, iv, auto_pad=True)
 
         assert encrypted1 == encrypted2
 

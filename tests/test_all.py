@@ -73,8 +73,8 @@ class TestCBCMode:
         iv = os.urandom(8)
         data = b"Hello, World!"
 
-        encrypted = encrypt(data, key, iv)
-        decrypted = decrypt(encrypted, key, iv)
+        encrypted = encrypt(data, key, iv, auto_pad=True)
+        decrypted = decrypt(encrypted, key, iv, auto_unpad=True)
 
         assert decrypted == data
 
@@ -83,8 +83,8 @@ class TestCBCMode:
         key = os.urandom(16)
         iv = os.urandom(8)
 
-        encrypted = encrypt(b"", key, iv)
-        decrypted = decrypt(encrypted, key, iv)
+        encrypted = encrypt(b"", key, iv, auto_pad=True)
+        decrypted = decrypt(encrypted, key, iv, auto_unpad=True)
 
         assert decrypted == b""
 
@@ -94,8 +94,8 @@ class TestCBCMode:
         iv = os.urandom(8)
         data = b"A" * 100  # 100 bytes = 13 blocks with padding
 
-        encrypted = encrypt(data, key, iv)
-        decrypted = decrypt(encrypted, key, iv)
+        encrypted = encrypt(data, key, iv, auto_pad=True)
+        decrypted = decrypt(encrypted, key, iv, auto_unpad=True)
 
         assert decrypted == data
         assert len(encrypted) % BLOCK_SIZE == 0
@@ -107,8 +107,8 @@ class TestCBCMode:
         iv2 = os.urandom(8)
         data = b"Same data"
 
-        encrypted1 = encrypt(data, key, iv1)
-        encrypted2 = encrypt(data, key, iv2)
+        encrypted1 = encrypt(data, key, iv1, auto_pad=True)
+        encrypted2 = encrypt(data, key, iv2, auto_pad=True)
 
         assert encrypted1 != encrypted2
 
@@ -118,8 +118,8 @@ class TestCBCMode:
         iv = os.urandom(8)
         data = b"Test data"
 
-        encrypted1 = encrypt(data, key, iv)
-        encrypted2 = encrypt(data, key, iv)
+        encrypted1 = encrypt(data, key, iv, auto_pad=True)
+        encrypted2 = encrypt(data, key, iv, auto_pad=True)
 
         assert encrypted1 == encrypted2
 
@@ -130,10 +130,10 @@ class TestCBCMode:
         iv = os.urandom(8)
         data = b"Secret message"
 
-        encrypted = encrypt(data, key1, iv)
+        encrypted = encrypt(data, key1, iv, auto_pad=True)
 
         with pytest.raises(ValueError):
-            decrypt(encrypted, key2, iv)
+            decrypt(encrypted, key2, iv, auto_unpad=True)
 
     def test_cbc_wrong_iv(self):
         """Decryption with wrong IV should produce garbage."""
@@ -142,8 +142,8 @@ class TestCBCMode:
         iv2 = os.urandom(8)
         data = b"Secret message"
 
-        encrypted = encrypt(data, key, iv1)
-        decrypted = decrypt(encrypted, key, iv2)
+        encrypted = encrypt(data, key, iv1, auto_pad=True)
+        decrypted = decrypt(encrypted, key, iv2, auto_unpad=True)
 
         assert decrypted != data
 
