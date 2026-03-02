@@ -21,8 +21,8 @@ class SecurityWarning(UserWarning):
     pass
 
 cdef uint32_t DELTA = 0x9e3779b9
-cdef uint32_t DEFAULT_ROUNDS = 32  # 32 cycles = 64 rounds
-cdef uint32_t MIN_ROUNDS = 8  # Minimum secure rounds
+cdef uint32_t DEFAULT_ROUNDS = 64  # 64 Feistel rounds = 32 cycles (PyPI xtea compatible)
+cdef uint32_t MIN_ROUNDS = 16  # Minimum secure Feistel rounds (8 cycles)
 
 
 cdef inline void xtea_encrypt_block(
@@ -37,11 +37,12 @@ cdef inline void xtea_encrypt_block(
     Args:
         v0, v1: Two 32-bit integers to encrypt (in-place)
         key: 128-bit key as 4 x 32-bit integers
-        rounds: Number of cycles (0 = default: 32)
+        rounds: Number of Feistel rounds (0 = default: 64). Each loop iteration is 2 rounds.
     """
     cdef uint32_t sum_val = 0
     cdef uint32_t i
-    cdef uint32_t n = rounds if rounds > 0 else DEFAULT_ROUNDS
+    # rounds is Feistel rounds, each cycle is 2 rounds
+    cdef uint32_t n = (rounds if rounds > 0 else DEFAULT_ROUNDS) // 2
 
     for i in range(n):
         v0[0] = v0[0] + ((((v1[0] << 4) ^ (v1[0] >> 5)) + v1[0]) ^ (sum_val + key[sum_val & 3]))
@@ -61,9 +62,10 @@ cdef inline void xtea_decrypt_block(
     Args:
         v0, v1: Two 32-bit integers to decrypt (in-place)
         key: 128-bit key as 4 x 32-bit integers
-        rounds: Number of cycles (0 = default: 32)
+        rounds: Number of Feistel rounds (0 = default: 64). Each loop iteration is 2 rounds.
     """
-    cdef uint32_t n = rounds if rounds > 0 else DEFAULT_ROUNDS
+    # rounds is Feistel rounds, each cycle is 2 rounds
+    cdef uint32_t n = (rounds if rounds > 0 else DEFAULT_ROUNDS) // 2
     cdef uint32_t sum_val = n * DELTA
     cdef uint32_t i
 
@@ -99,7 +101,7 @@ def encrypt_block(bytes data not None, bytes key not None, unsigned int rounds=0
     Args:
         data: 8 bytes of data to encrypt
         key: 16-byte encryption key
-        rounds: Number of cycles (0 = default: 32)
+        rounds: Number of Feistel rounds (0 = default: 64, min recommended: 16)
 
     Returns:
         8 bytes of encrypted data
@@ -161,7 +163,7 @@ def decrypt_block(bytes data not None, bytes key not None, unsigned int rounds=0
     Args:
         data: 8 bytes of data to decrypt
         key: 16-byte decryption key
-        rounds: Number of cycles (0 = default: 32)
+        rounds: Number of Feistel rounds (0 = default: 64, min: 16)
 
     Returns:
         8 bytes of decrypted data

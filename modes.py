@@ -12,8 +12,8 @@ from .core import encrypt_block, decrypt_block, SecurityWarning
 
 BLOCK_SIZE = 8  # XTEA block size in bytes
 KEY_SIZE = 16   # XTEA key size in bytes
-DEFAULT_ROUNDS = 32  # Default secure rounds
-MIN_SECURE_ROUNDS = 8  # Minimum recommended rounds
+DEFAULT_ROUNDS = 64  # Default Feistel rounds (PyPI xtea compatible)
+MIN_SECURE_ROUNDS = 16  # Minimum recommended Feistel rounds
 
 
 def generate_key(size: int = KEY_SIZE) -> bytes:
@@ -143,9 +143,9 @@ def pkcs7_unpad(data: bytes) -> bytes:
 
 # ============== ECB Mode ==============
 
-def encrypt_ecb(data: bytes, key: bytes, rounds: int = 0) -> bytes:
+def encrypt_ecb(data: bytes, key: bytes, rounds: int = 0, auto_pad: bool = False) -> bytes:
     """
-    Encrypt data using XTEA in ECB mode with PKCS#7 padding.
+    Encrypt data using XTEA in ECB mode.
 
     .. warning::
         ECB mode is **NOT SECURE** for most use cases!
@@ -154,9 +154,10 @@ def encrypt_ecb(data: bytes, key: bytes, rounds: int = 0) -> bytes:
         - Use CBC or CTR mode instead
 
     Args:
-        data: Plaintext data to encrypt
+        data: Plaintext data to encrypt (must be multiple of 8 bytes unless auto_pad=True)
         key: 16-byte encryption key
         rounds: Number of XTEA cycles (0 = default: 32, min recommended: 8)
+        auto_pad: If True, apply PKCS#7 padding automatically (default: False for PyPI xtea compatibility)
 
     Returns:
         Encrypted ciphertext
@@ -171,17 +172,21 @@ def encrypt_ecb(data: bytes, key: bytes, rounds: int = 0) -> bytes:
         stacklevel=2
     )
 
-    padded = pkcs7_pad(data)
+    if auto_pad:
+        data = pkcs7_pad(data)
+    elif len(data) % BLOCK_SIZE != 0:
+        raise ValueError(f"Data length must be a multiple of {BLOCK_SIZE} bytes (got {len(data)}). Use auto_pad=True for automatic padding.")
+
     result = bytearray()
 
-    for i in range(0, len(padded), BLOCK_SIZE):
-        block = padded[i:i + BLOCK_SIZE]
+    for i in range(0, len(data), BLOCK_SIZE):
+        block = data[i:i + BLOCK_SIZE]
         result.extend(encrypt_block(block, key, rounds))
 
     return bytes(result)
 
 
-def decrypt_ecb(data: bytes, key: bytes, rounds: int = 0) -> bytes:
+def decrypt_ecb(data: bytes, key: bytes, rounds: int = 0, auto_unpad: bool = False) -> bytes:
     """
     Decrypt data using XTEA in ECB mode.
 
@@ -189,6 +194,7 @@ def decrypt_ecb(data: bytes, key: bytes, rounds: int = 0) -> bytes:
         data: Ciphertext to decrypt
         key: 16-byte decryption key
         rounds: Number of XTEA cycles (0 = default: 32, min: 8)
+        auto_unpad: If True, remove PKCS#7 padding automatically (default: False for PyPI xtea compatibility)
 
     Returns:
         Decrypted plaintext
@@ -208,20 +214,23 @@ def decrypt_ecb(data: bytes, key: bytes, rounds: int = 0) -> bytes:
         block = data[i:i + BLOCK_SIZE]
         result.extend(decrypt_block(block, key, rounds))
 
-    return pkcs7_unpad(bytes(result))
+    if auto_unpad:
+        return pkcs7_unpad(bytes(result))
+    return bytes(result)
 
 
 # ============== CBC Mode ==============
 
-def encrypt_cbc(data: bytes, key: bytes, iv: bytes, rounds: int = 0) -> bytes:
+def encrypt_cbc(data: bytes, key: bytes, iv: bytes, rounds: int = 0, auto_pad: bool = False) -> bytes:
     """
-    Encrypt data using XTEA in CBC mode with PKCS#7 padding.
+    Encrypt data using XTEA in CBC mode.
 
     Args:
-        data: Plaintext data to encrypt
+        data: Plaintext data to encrypt (must be multiple of 8 bytes unless auto_pad=True)
         key: 16-byte encryption key
         iv: 8-byte initialization vector (must be unpredictable and unique)
         rounds: Number of XTEA cycles (0 = default: 32, min: 8)
+        auto_pad: If True, apply PKCS#7 padding automatically (default: False for PyPI xtea compatibility)
 
     Returns:
         Encrypted ciphertext
@@ -234,12 +243,16 @@ def encrypt_cbc(data: bytes, key: bytes, iv: bytes, rounds: int = 0) -> bytes:
     _validate_iv(iv, "IV")
     rounds = _validate_rounds(rounds)
 
-    padded = pkcs7_pad(data)
+    if auto_pad:
+        data = pkcs7_pad(data)
+    elif len(data) % BLOCK_SIZE != 0:
+        raise ValueError(f"Data length must be a multiple of {BLOCK_SIZE} bytes (got {len(data)}). Use auto_pad=True for automatic padding.")
+
     result = bytearray()
     prev = iv
 
-    for i in range(0, len(padded), BLOCK_SIZE):
-        block = padded[i:i + BLOCK_SIZE]
+    for i in range(0, len(data), BLOCK_SIZE):
+        block = data[i:i + BLOCK_SIZE]
         xored = xor_bytes(block, prev)
         encrypted = encrypt_block(xored, key, rounds)
         result.extend(encrypted)
@@ -248,15 +261,16 @@ def encrypt_cbc(data: bytes, key: bytes, iv: bytes, rounds: int = 0) -> bytes:
     return bytes(result)
 
 
-def decrypt_cbc(data: bytes, key: bytes, iv: bytes, rounds: int = 0) -> bytes:
+def decrypt_cbc(data: bytes, key: bytes, iv: bytes, rounds: int = 0, auto_unpad: bool = False) -> bytes:
     """
-    Decrypt data using XTEA in CBC mode with PKCS#7 padding.
+    Decrypt data using XTEA in CBC mode.
 
     Args:
         data: Ciphertext to decrypt
         key: 16-byte decryption key
         iv: 8-byte initialization vector
         rounds: Number of XTEA cycles (0 = default: 32, min: 8)
+        auto_unpad: If True, remove PKCS#7 padding automatically (default: False for PyPI xtea compatibility)
 
     Returns:
         Decrypted plaintext
@@ -281,7 +295,9 @@ def decrypt_cbc(data: bytes, key: bytes, iv: bytes, rounds: int = 0) -> bytes:
         result.extend(xored)
         prev = block
 
-    return pkcs7_unpad(bytes(result))
+    if auto_unpad:
+        return pkcs7_unpad(bytes(result))
+    return bytes(result)
 
 
 # ============== CFB Mode ==============

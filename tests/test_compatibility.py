@@ -56,9 +56,9 @@ class TestXTEACompatibility:
         key = b"0123456789abcdef"
         data = b"Hello, World! Test message."
 
-        # Our implementation (with automatic padding)
-        our_encrypted = encrypt_ecb(data, key)
-        our_decrypted = decrypt_ecb(our_encrypted, key)
+        # Our implementation (with auto padding for convenience)
+        our_encrypted = encrypt_ecb(data, key, auto_pad=True)
+        our_decrypted = decrypt_ecb(our_encrypted, key, auto_unpad=True)
 
         # PyPI xtea library (manual padding needed)
         padded = pkcs7_pad(data)
@@ -82,9 +82,9 @@ class TestXTEACompatibility:
         iv = b"abcdefgh"  # 8 bytes
         data = b"Hello, World! Test message."
 
-        # Our implementation (with automatic padding)
-        our_encrypted = encrypt_cbc(data, key, iv)
-        our_decrypted = decrypt_cbc(our_encrypted, key, iv)
+        # Our implementation (with auto padding for convenience)
+        our_encrypted = encrypt_cbc(data, key, iv, auto_pad=True)
+        our_decrypted = decrypt_cbc(our_encrypted, key, iv, auto_unpad=True)
 
         # PyPI xtea library (manual padding needed)
         padded = pkcs7_pad(data)

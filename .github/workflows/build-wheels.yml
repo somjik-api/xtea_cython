@@ -51,7 +51,7 @@ jobs:
           CIBW_SKIP: "pp* *-win32 *-manylinux_i686 *-musllinux_i686"
           # Let setup.py handle platform-specific flags
           # Test the wheels
-          CIBW_TEST_COMMAND: "python -c \"from xtea_cython import encrypt_cbc, decrypt_cbc, generate_key, generate_iv; key = generate_key(); iv = generate_iv(); data = b'test'; enc = encrypt_cbc(data, key, iv); dec = decrypt_cbc(enc, key, iv); assert dec == data; print('OK')\""
+          CIBW_TEST_COMMAND: "python -c \"from xtea_cython import encrypt_cbc, decrypt_cbc, generate_key, generate_iv; key = generate_key(); iv = generate_iv(); data = b'test'; enc = encrypt_cbc(data, key, iv, auto_pad=True); dec = decrypt_cbc(enc, key, iv, auto_unpad=True); assert dec == data; print('OK')\""
           CIBW_TEST_SKIP: "cp38-macosx_arm64 cp39-macosx_arm64"
 
       - name: Upload wheels as artifacts
